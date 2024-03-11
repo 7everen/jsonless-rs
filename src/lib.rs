@@ -2,6 +2,7 @@
 #![crate_name = "jsonless"]
 #![recursion_limit = "1000"]
 
+use std::collections::HashMap;
 use serde_json::{Value, Map};
 
 pub struct Options {
@@ -24,14 +25,17 @@ pub fn encode(data: &Value) -> Value {
 }
 
 pub fn encode_with_options(json: &Value, options: Options) -> Value {
-
-    let all_props: Vec<String> = Vec::new();
+    let all_props_map = HashMap::new();
     let all_prop_groups: Vec<Vec<u16>> = Vec::new();
 
-    let (mut encoded, all_props_returned, all_prop_groups_returned) =
-        encode_single(&json, all_props, all_prop_groups, options.symbol);
+    let (mut encoded, all_prop_groups_returned, all_props_map_returned) =
+        encode_single(&json, all_prop_groups, options.symbol, all_props_map);
 
-    let s = all_props_returned.join(&*options.symbol.to_string());
+    let mut vec: Vec<String> = vec![String::new(); all_props_map_returned.len()];
+    for (prop, index) in all_props_map_returned {
+        vec[index as usize] = prop;
+    }
+    let s = vec.join(&*options.symbol.to_string());
     let mut signature = vec![Value::String(s)];
     for prop_group in all_prop_groups_returned {
 
@@ -42,29 +46,26 @@ pub fn encode_with_options(json: &Value, options: Options) -> Value {
     encoded
 }
 
-fn encode_single(json: &Value, mut all_props: Vec<String>, mut all_prop_groups: Vec<Vec<u16>>, symbol: char) -> (Value, Vec<String>, Vec<Vec<u16>>) {
+fn encode_single(json: &Value, mut all_prop_groups: Vec<Vec<u16>>, symbol: char, mut all_props_map: HashMap<String, isize>) -> (Value, Vec<Vec<u16>>, HashMap<String, isize>) {
     let mut my_prop_group: Vec<u16> = Vec::new();
     let mut arr: Vec<Value> = Vec::new();
     if json.is_object() {
         let obj = json.as_object().expect("Expected object");
         for (prop, value) in obj {
-            let opt = all_props.iter().position(|r| r == prop);
-            let index: usize = match opt {
-                None => {
-                    all_props.push(prop.to_string());
-                    all_props.len() - 1
-                },
-                Some(i) => i
-            };
+            let mut index = index_of(prop, &all_props_map);
+            if index == -1 {
+                index = all_props_map.len() as isize;
+                all_props_map.insert(prop.to_string(), index);
+            }
             my_prop_group.push(index as u16);
-            let (encoded_value,all_props_returned, all_prop_groups_returned) =
-                encode_single(&value, all_props, all_prop_groups, symbol);
-            all_props = all_props_returned;
+            let (encoded_value, all_prop_groups_returned, all_props_map_returned) =
+                encode_single(&value, all_prop_groups, symbol, all_props_map);
             all_prop_groups = all_prop_groups_returned;
+            all_props_map = all_props_map_returned;
             arr.push(encoded_value);
         }
 
-        let mut index =index_of_group(&my_prop_group, &all_prop_groups);
+        let mut index = index_of_group(&my_prop_group, &all_prop_groups);
         if index == -1 {
             index = all_prop_groups.len() as i32;
             all_prop_groups.push(my_prop_group);
@@ -73,17 +74,27 @@ fn encode_single(json: &Value, mut all_props: Vec<String>, mut all_prop_groups: 
     } else if json.is_array() {
         let arr_vec = json.as_array().expect("Expected array");
         for value in arr_vec {
-            let (encoded_value,all_props_returned, all_prop_groups_returned) =
-                encode_single(&value, all_props, all_prop_groups, symbol);
-            all_props = all_props_returned;
+            let (encoded_value, all_prop_groups_returned, all_props_map_returned) =
+                encode_single(&value, all_prop_groups, symbol, all_props_map);
             all_prop_groups = all_prop_groups_returned;
+            all_props_map = all_props_map_returned;
             arr.push(encoded_value);
         }
     } else {
-        return (json.clone(), all_props, all_prop_groups);
+        return (json.clone(), all_prop_groups, all_props_map);
     }
-    (Value::Array(arr), all_props, all_prop_groups)
+    (Value::Array(arr), all_prop_groups, all_props_map)
 }
+
+fn index_of(prop: &String, all_props_map: &HashMap<String, isize>) -> isize {
+    return match all_props_map.get(prop){
+        None => {
+            -1
+        },
+        Some(i) => i.to_owned()
+    };
+}
+
 
 fn index_of_group(my_prop_group: &Vec<u16>, all_prop_groups: &Vec<Vec<u16>>) -> i32 {
     for i in 0..all_prop_groups.len() {
@@ -2801,7 +2812,7 @@ mod tests {
 });
 
         let start = Instant::now();
-        for i in 0..100 {
+        for i in 0..1000 {
             encode(&object);
         }
         let duration = start.elapsed();

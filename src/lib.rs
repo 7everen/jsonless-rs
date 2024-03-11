@@ -16,7 +16,8 @@ impl Options {
     }
 }
 
-pub fn encode(data: &Value) -> Value {
+#[no_mangle]
+pub extern "C" fn encode(data: &Value) -> Value {
     let options = Options {
         symbol: '$',
         signature: None
@@ -24,7 +25,8 @@ pub fn encode(data: &Value) -> Value {
     encode_with_options(&data, options)
 }
 
-pub fn encode_with_options(json: &Value, options: Options) -> Value {
+#[no_mangle]
+pub extern "C" fn encode_with_options(json: &Value, options: Options) -> Value {
     let all_props_map = HashMap::new();
     let all_prop_groups: Vec<Vec<u16>> = Vec::new();
 
@@ -95,7 +97,6 @@ fn index_of(prop: &String, all_props_map: &HashMap<String, isize>) -> isize {
     };
 }
 
-
 fn index_of_group(my_prop_group: &Vec<u16>, all_prop_groups: &Vec<Vec<u16>>) -> i32 {
     for i in 0..all_prop_groups.len() {
         let prop_group = &all_prop_groups[i];
@@ -116,19 +117,22 @@ fn index_of_group(my_prop_group: &Vec<u16>, all_prop_groups: &Vec<Vec<u16>>) -> 
     -1
 }
 
-pub fn without_signature(data: &Value) -> Value {
+#[no_mangle]
+pub extern "C" fn without_signature(data: &Value) -> Value {
     let mut cloned = data.clone();
     let arr = cloned.as_array_mut().unwrap();
     arr.remove(arr.len()-1);
     cloned
 }
 
-pub fn get_signature(data: &Value) -> Value {
+#[no_mangle]
+pub extern "C" fn get_signature(data: &Value) -> Value {
     let arr = data.as_array().unwrap();
     arr.last().unwrap().clone()
 }
 
-pub fn decode(data: &Value) -> Value {
+#[no_mangle]
+pub extern "C" fn decode(data: &Value) -> Value {
     let options = Options {
         symbol: '$',
         signature: None
@@ -136,7 +140,8 @@ pub fn decode(data: &Value) -> Value {
     decode_with_options(&data, options)
 }
 
-pub fn decode_with_options(json: &Value, options: Options) -> Value {
+#[no_mangle]
+pub extern "C" fn decode_with_options(json: &Value, options: Options) -> Value {
     let arr = json.as_array().unwrap();
     let len;
     let signature: Value = match options.signature {

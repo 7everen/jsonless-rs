@@ -1,6 +1,6 @@
 # JsonLess <img src="https://raw.githubusercontent.com/7everen/jsonless-rs/main/icons/icon-32.png" alt="icon for jsonless compressor/obfuscator">
 
-Is a Rust library that compresses and obfuscates JSON.
+Is a Rust/C/C++ library that compresses and obfuscates JSON.
 
 ## Introduction
 It was designed for performant compress large JSON which has duplicated data properties like in the example:
@@ -79,3 +79,7 @@ let options = Options::new('$', Some(signature));
 let decoded = jsonless::decode_with_options(&encoded, options);
 
 ```
+
+## How to use in C/C++
+
+[Integrating Rust into Existing C/C++ Projects](https://medium.com/@AlexanderObregon/integrating-rust-into-existing-c-c-projects-e0810dbddded)
